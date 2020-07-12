@@ -25,7 +25,7 @@ crs_latlon = ccrs.PlateCarree()
 hourly_file = '/home/jseddon/python/elinca/hourly_positions.json'
 
 # The top-level directory containing the reanalysis data
-era5_dir = '/home/jseddon/python/elinca/era5'
+era5_dir = '/data/jseddon/era5'
 
 # The directory to save the output images into
 output_dir = '/home/jseddon/python/elinca/plots'
