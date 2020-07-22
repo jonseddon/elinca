@@ -14,6 +14,28 @@ from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
 
 OUTPUT_FILE = 'image.avi'
 
+class UpdateableAnimation(FieldAnimation):
+    """
+    A FieldAnimation class that allows the vector field to be updated as
+    the animation is running and also allows a video frame to be extracted.
+    """
+    def __init__(self, width, height, field, computeSahder=False,
+            image=None):
+        """Initialise the class"""
+        super().__init__(width, height, field, computeSahder=computeSahder,
+                         image=image)
+
+    def update_field(self, field):
+        """Update the 2D vector field but leave the existing tracers"""
+        fieldAsRGB, uMin, uMax, vMin, vMax = field2RGB(field)
+        self._fieldAsRGB = fieldAsRGB
+        self.modulus = modulus(field)
+        self.fieldTexture = Texture(data=fieldAsRGB,
+                                  width=fieldAsRGB.shape[1],
+                                  height=fieldAsRGB.shape[0],
+                                  filt=OpenGL.GL.GL_LINEAR)
+
+
 def main():
     DISPLAY_WIDTH = 800
     DISPLAY_HEIGHT = 800
@@ -68,8 +90,8 @@ def main():
     background_file = '/home/jseddon/python/elinca/background.png'
     background = np.flipud(np.asarray(Image.open(background_file), np.uint8))
 
-    fa = FieldAnimation(DISPLAY_WIDTH, DISPLAY_HEIGHT, field_uv, True,
-                        background)
+    fa = UpdateableAnimation(DISPLAY_WIDTH, DISPLAY_HEIGHT, field_uv, True,
+                             background)
 
     n = 0
     while n < 400:
@@ -78,13 +100,7 @@ def main():
 
         if n == 200:
             print('Next frame')
-            fieldAsRGB, uMin, uMax, vMin, vMax = field2RGB(field_uv2)
-            fa._fieldAsRGB = fieldAsRGB
-            fa.modulus = modulus(field_uv2)
-            fa.fieldTexture = Texture(data=fieldAsRGB,
-                                      width=fieldAsRGB.shape[1],
-                                      height=fieldAsRGB.shape[0],
-                                      filt=OpenGL.GL.GL_LINEAR)
+            fa.update_field(field_uv2)
         glClear(GL_COLOR_BUFFER_BIT)
         fa.draw()
         glfw.swap_buffers(window)
