@@ -7,6 +7,7 @@ import cv2
 import iris
 import numpy as np
 from OpenGL.GL import *
+from PIL import Image
 import glfw
 
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
@@ -64,11 +65,14 @@ def main():
     V = v_atl.data[::-1]
     field_uv2 = np.flipud(np.dstack((U, -V)))
 
+    background_file = '/home/jseddon/python/elinca/background.png'
+    background = np.flipud(np.asarray(Image.open(background_file), np.uint8))
 
-    fa = FieldAnimation(DISPLAY_WIDTH, DISPLAY_HEIGHT, field_uv, True, None)
+    fa = FieldAnimation(DISPLAY_WIDTH, DISPLAY_HEIGHT, field_uv, True,
+                        background)
 
     n = 0
-    while n < 1200:
+    while n < 400:
         # TODO set frame rate on the OpenGL FieldAnimation side
         n += 1
 
@@ -81,7 +85,6 @@ def main():
                                       width=fieldAsRGB.shape[1],
                                       height=fieldAsRGB.shape[0],
                                       filt=OpenGL.GL.GL_LINEAR)
-            # fa.setField(field_uv2)
         glClear(GL_COLOR_BUFFER_BIT)
         fa.draw()
         glfw.swap_buffers(window)
