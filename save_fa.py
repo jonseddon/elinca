@@ -8,7 +8,8 @@ import os
 import cv2
 import iris
 import numpy as np
-from OpenGL.GL import *
+from OpenGL.GL import (glClear, glReadPixels, GL_LINEAR, GL_BGR,
+                       GL_UNSIGNED_BYTE, GL_COLOR_BUFFER_BIT)
 import glfw
 
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
@@ -35,13 +36,12 @@ class UpdateableAnimation(FieldAnimation):
         self.fieldTexture = Texture(data=field_as_rgb,
                                     width=field_as_rgb.shape[1],
                                     height=field_as_rgb.shape[0],
-                                    filt=OpenGL.GL.GL_LINEAR)
+                                    filt=GL_LINEAR)
 
     def get_video_frame(self):
         """Get the current video frame as a BGR array for cv2"""
         image_buffer = glReadPixels(0, 0, self.w_width, self.w_height,
-                                    OpenGL.GL.GL_BGR,
-                                    OpenGL.GL.GL_UNSIGNED_BYTE)
+                                    GL_BGR, GL_UNSIGNED_BYTE)
         image = (np.frombuffer(image_buffer, dtype=np.uint8).
                  reshape(self.w_width, self.w_height, 3))
         return np.flipud(image)
