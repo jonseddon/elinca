@@ -9,7 +9,6 @@ import cv2
 import iris
 import numpy as np
 from OpenGL.GL import *
-from PIL import Image
 import glfw
 
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
@@ -113,7 +112,10 @@ def main():
     )
 
     background_file = '/home/jseddon/python/elinca/background.png'
-    background = np.flipud(np.asarray(Image.open(background_file), np.uint8))
+    # Load background image and convert from OpenCV BGR to Pillow RGB (+ alpha)
+    background = np.flipud(
+        cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
+    )
 
     fa = UpdateableAnimation(display_width, display_height, field_uv, True,
                              background)
@@ -134,6 +136,7 @@ def main():
     writer.release()
     glfw.destroy_window(window)
     glfw.terminate()
+
 
 if __name__ == "__main__":
     main()
