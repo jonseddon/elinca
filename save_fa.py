@@ -25,6 +25,11 @@ class UpdateableAnimation(FieldAnimation):
     def __init__(self, width, height, field, compute_shader=False,
                  image=None):
         """Initialise the class"""
+        # Prevent linter warnings for attributes used in this class
+        self._fieldAsRGB = None
+        self.modulus = None
+        self.fieldTexture = None
+        # Initialise parent class
         super().__init__(width, height, field, computeSahder=compute_shader,
                          image=image)
 
