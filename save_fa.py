@@ -69,13 +69,12 @@ class VideoWriteGlfwApp(glfwApp):
     """
     An glfwApp that supports writing videos.
     """
-    def __init__(self, videopath, fps=20, title='', width=800, height=600):
+
+    def __init__(self, videopath, fps=20, title="", width=800, height=600):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-        self._writer = cv2.VideoWriter(
-            videopath, fourcc, fps, (width, height), True
-        )
+        self._writer = cv2.VideoWriter(videopath, fourcc, fps, (width, height), True)
         self._fa = None
 
     def set_fa(self, fa):
@@ -151,8 +150,12 @@ def main():
         cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
     )
 
-    app = VideoWriteGlfwApp(OUTPUT_FILE, title="Elinca Animation",
-                            width=display_width, height=display_height)
+    app = VideoWriteGlfwApp(
+        OUTPUT_FILE,
+        title="Elinca Animation",
+        width=display_width,
+        height=display_height,
+    )
 
     fa = UpdateableAnimation(display_width, display_height, field_uv, True, background)
     app.set_fa(fa)
