@@ -10,6 +10,7 @@ import iris
 import numpy as np
 from OpenGL.GL import (
     glClear,
+    glClearColor,
     glReadPixels,
     GL_LINEAR,
     GL_BGR,
@@ -19,6 +20,7 @@ from OpenGL.GL import (
 import glfw
 
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
+from fieldanimation.examples.glfwBackend import glfwApp
 
 OUTPUT_FILE = "image.avi"
 
@@ -63,6 +65,41 @@ class UpdateableAnimation(FieldAnimation):
         return np.flipud(image)
 
 
+class VideoWriteGlfwApp(glfwApp):
+    """
+    An glfwApp that supports writing videos.
+    """
+    def __init__(self, videopath, fps=20, title='', width=800, height=600):
+        super().__init__(title=title, width=width, height=height, resizable=False)
+        # Setup the video writing
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        self._writer = cv2.VideoWriter(
+            videopath, fourcc, fps, (width, height), True
+        )
+        self._fa = None
+
+    def set_fa(self, fa):
+        self._fa = fa
+
+    def onResize(self, window, width, height):
+        """Resizing's not allowed"""
+        pass
+
+    def close(self):
+        """Additionally, close the video writer"""
+        self._writer.release()
+        super().close()
+
+    def run_frame(self):
+        """Update a frame"""
+        glClearColor(0.0, 0.0, 0.0, 0.0)
+        glfw.poll_events()
+        glClear(GL_COLOR_BUFFER_BIT)
+        self._fa.draw()
+        glfw.swap_buffers(self._window)
+        self._writer.write(self._fa.get_video_frame())
+
+
 def load_era5_field(u_file, v_file, lats, longs):
     """
     Load ERA5 u and v wind files, trim to the specified latitude and longitude
@@ -88,27 +125,6 @@ def load_era5_field(u_file, v_file, lats, longs):
 def main():
     display_width = 800
     display_height = 800
-    # Initialize the library
-    if not glfw.init():
-        print("Not initialised")
-        return
-    # Create a windowed mode window and its OpenGL context
-    window = glfw.create_window(
-        display_width, display_height, "Elinca Animation", None, None
-    )
-    if not window:
-        glfw.terminate()
-        print("Cannot create window")
-        return
-    # Make the window's context current
-    glfw.make_context_current(window)
-
-    # Setup the video writing
-    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    fps = 20
-    writer = cv2.VideoWriter(
-        OUTPUT_FILE, fourcc, fps, (display_width, display_height), True
-    )
 
     lat_range = (-28, 42)
     long_range = (-70, 10)
@@ -135,7 +151,11 @@ def main():
         cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
     )
 
+    app = VideoWriteGlfwApp(OUTPUT_FILE, title="Elinca Animation",
+                            width=display_width, height=display_height)
+
     fa = UpdateableAnimation(display_width, display_height, field_uv, True, background)
+    app.set_fa(fa)
 
     n = 0
     while n < 400:
@@ -143,16 +163,9 @@ def main():
         if n == 200:
             print("Next frame")
             fa.update_field(field_uv2)
-        glClear(GL_COLOR_BUFFER_BIT)
-        glfw.poll_events()
-        fa.draw()
-        glfw.swap_buffers(window)
+        app.run_frame()
 
-        writer.write(fa.get_video_frame())
-
-    writer.release()
-    glfw.destroy_window(window)
-    glfw.terminate()
+    app.close()
 
 
 if __name__ == "__main__":
