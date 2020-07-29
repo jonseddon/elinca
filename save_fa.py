@@ -8,13 +8,19 @@ import os
 import cv2
 import iris
 import numpy as np
-from OpenGL.GL import (glClear, glReadPixels, GL_LINEAR, GL_BGR,
-                       GL_UNSIGNED_BYTE, GL_COLOR_BUFFER_BIT)
+from OpenGL.GL import (
+    glClear,
+    glReadPixels,
+    GL_LINEAR,
+    GL_BGR,
+    GL_UNSIGNED_BYTE,
+    GL_COLOR_BUFFER_BIT,
+)
 import glfw
 
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
 
-OUTPUT_FILE = 'image.avi'
+OUTPUT_FILE = "image.avi"
 
 
 class UpdateableAnimation(FieldAnimation):
@@ -22,33 +28,38 @@ class UpdateableAnimation(FieldAnimation):
     A FieldAnimation class that allows the vector field to be updated as
     the animation is running and also allows a video frame to be extracted.
     """
-    def __init__(self, width, height, field, compute_shader=False,
-                 image=None):
+
+    def __init__(self, width, height, field, compute_shader=False, image=None):
         """Initialise the class"""
         # Prevent linter warnings for attributes used in this class
         self._fieldAsRGB = None
         self.modulus = None
         self.fieldTexture = None
         # Initialise parent class
-        super().__init__(width, height, field, computeSahder=compute_shader,
-                         image=image)
+        super().__init__(
+            width, height, field, computeSahder=compute_shader, image=image
+        )
 
     def update_field(self, field):
         """Update the 2D vector field but leave the existing tracers"""
         field_as_rgb, u_min, u_max, v_min, v_max = field2RGB(field)
         self._fieldAsRGB = field_as_rgb
         self.modulus = modulus(field)
-        self.fieldTexture = Texture(data=field_as_rgb,
-                                    width=field_as_rgb.shape[1],
-                                    height=field_as_rgb.shape[0],
-                                    filt=GL_LINEAR)
+        self.fieldTexture = Texture(
+            data=field_as_rgb,
+            width=field_as_rgb.shape[1],
+            height=field_as_rgb.shape[0],
+            filt=GL_LINEAR,
+        )
 
     def get_video_frame(self):
         """Get the current video frame as a BGR array for cv2"""
-        image_buffer = glReadPixels(0, 0, self.w_width, self.w_height,
-                                    GL_BGR, GL_UNSIGNED_BYTE)
-        image = (np.frombuffer(image_buffer, dtype=np.uint8).
-                 reshape(self.w_width, self.w_height, 3))
+        image_buffer = glReadPixels(
+            0, 0, self.w_width, self.w_height, GL_BGR, GL_UNSIGNED_BYTE
+        )
+        image = np.frombuffer(image_buffer, dtype=np.uint8).reshape(
+            self.w_width, self.w_height, 3
+        )
         return np.flipud(image)
 
 
@@ -79,57 +90,58 @@ def main():
     display_height = 800
     # Initialize the library
     if not glfw.init():
-        print('Not initialised')
+        print("Not initialised")
         return
     # Create a windowed mode window and its OpenGL context
-    window = glfw.create_window(display_width, display_height,
-                                "Elinca Animation", None, None)
+    window = glfw.create_window(
+        display_width, display_height, "Elinca Animation", None, None
+    )
     if not window:
         glfw.terminate()
-        print('Cannot create window')
+        print("Cannot create window")
         return
     # Make the window's context current
     glfw.make_context_current(window)
 
     # Setup the video writing
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
     fps = 20
-    writer = cv2.VideoWriter(OUTPUT_FILE, fourcc, fps,
-                             (display_width, display_height), True)
+    writer = cv2.VideoWriter(
+        OUTPUT_FILE, fourcc, fps, (display_width, display_height), True
+    )
 
     lat_range = (-28, 42)
     long_range = (-70, 10)
-    era5_dir = '/data/jseddon/era5/2013/10'
+    era5_dir = "/data/jseddon/era5/2013/10"
     # First time slice
     field_uv = load_era5_field(
-        os.path.join(era5_dir, '01/ecmwf-era5_oper_an_sfc_201310010000.10u.nc'),
-        os.path.join(era5_dir, '01/ecmwf-era5_oper_an_sfc_201310010000.10v.nc'),
+        os.path.join(era5_dir, "01/ecmwf-era5_oper_an_sfc_201310010000.10u.nc"),
+        os.path.join(era5_dir, "01/ecmwf-era5_oper_an_sfc_201310010000.10v.nc"),
         lat_range,
-        long_range
+        long_range,
     )
 
     # Second time slice
     field_uv2 = load_era5_field(
-        os.path.join(era5_dir, '05/ecmwf-era5_oper_an_sfc_201310050000.10u.nc'),
-        os.path.join(era5_dir, '05/ecmwf-era5_oper_an_sfc_201310050000.10v.nc'),
+        os.path.join(era5_dir, "05/ecmwf-era5_oper_an_sfc_201310050000.10u.nc"),
+        os.path.join(era5_dir, "05/ecmwf-era5_oper_an_sfc_201310050000.10v.nc"),
         lat_range,
-        long_range
+        long_range,
     )
 
-    background_file = '/home/jseddon/python/elinca/background.png'
+    background_file = "/home/jseddon/python/elinca/background.png"
     # Load background image and convert from OpenCV BGR to Pillow RGB (+ alpha)
     background = np.flipud(
         cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
     )
 
-    fa = UpdateableAnimation(display_width, display_height, field_uv, True,
-                             background)
+    fa = UpdateableAnimation(display_width, display_height, field_uv, True, background)
 
     n = 0
     while n < 400:
         n += 1
         if n == 200:
-            print('Next frame')
+            print("Next frame")
             fa.update_field(field_uv2)
         glClear(GL_COLOR_BUFFER_BIT)
         glfw.poll_events()
