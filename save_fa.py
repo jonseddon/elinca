@@ -158,6 +158,7 @@ def main():
     )
 
     fa = UpdateableAnimation(display_width, display_height, field_uv, True, background)
+    fa.palette = False
     app.set_fa(fa)
 
     n = 0
