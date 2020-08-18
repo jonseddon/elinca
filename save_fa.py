@@ -3,10 +3,12 @@ save_fa.py
 from
 https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on-python-opengl-f534a4638a0d
 """
+import copy
 import os
 
 import cv2
 import iris
+from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from OpenGL.GL import (
     glClear,
@@ -24,6 +26,8 @@ from fieldanimation.examples.glfwBackend import glfwApp
 
 OUTPUT_FILE = "image.avi"
 
+PIL_BLACK = (0, 0, 0, 255)
+PIL_ORANGE = (235, 119, 52, 255)
 
 class UpdateableAnimation(FieldAnimation):
     """
@@ -146,9 +150,25 @@ def main():
 
     background_file = "/home/jseddon/python/elinca/background.png"
     # Load background image and convert from OpenCV BGR to Pillow RGB (+ alpha)
-    background = np.flipud(
-        cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
-    )
+    # orig_image = cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
+    orig_image = Image.open(background_file)
+    background_width, background_height = orig_image.size
+    frame_image = copy.copy(orig_image)
+    draw = ImageDraw.Draw(frame_image)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMono.ttf',
+                              30)
+    draw.text((272, 540), '01/10/2013 12:00', font=font, fill=PIL_BLACK)
+    draw.ellipse((0, 0, 5, 5), fill=PIL_ORANGE, outline=PIL_ORANGE)
+    #  = cv2.putText(, '01/10/2013 12:00', )
+    background = np.flipud(np.asarray(frame_image, np.uint8))
+    frame_image = copy.copy(orig_image)
+    draw = ImageDraw.Draw(frame_image)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMono.ttf',
+                              30)
+    draw.text((272, 540), '05/10/2013 12:00', font=font, fill=PIL_BLACK)
+    draw.ellipse((background_width-5, background_height-5,
+                    background_width, background_height), fill=PIL_ORANGE, outline=PIL_ORANGE)
+    background2 = np.flipud(np.asarray(frame_image, np.uint8))
 
     app = VideoWriteGlfwApp(
         OUTPUT_FILE,
@@ -167,6 +187,7 @@ def main():
         if n == 200:
             print("Next frame")
             fa.update_field(field_uv2)
+            fa.imageTexture = Texture(data=background2, dtype=GL_UNSIGNED_BYTE)
         app.run_frame()
 
     app.close()
