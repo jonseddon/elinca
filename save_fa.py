@@ -29,6 +29,9 @@ OUTPUT_FILE = "image.avi"
 PIL_BLACK = (0, 0, 0, 255)
 PIL_ORANGE = (235, 119, 52, 255)
 
+FONT_PATH = '/usr/share/fonts/truetype/freefont/FreeMono.ttf'
+
+
 class UpdateableAnimation(FieldAnimation):
     """
     A FieldAnimation class that allows the vector field to be updated as
@@ -103,6 +106,67 @@ class VideoWriteGlfwApp(glfwApp):
         self._writer.write(self._fa.get_video_frame())
 
 
+class BackgroundImage:
+    """
+    Load a background image and allow the addition of overlays
+    """
+    def __init__(self, filepath):
+        """
+        Load the image and calculate any necessary properties
+        """
+        self.orig_image = Image.open(filepath)
+        self.width, self.height = self.orig_image.size
+
+    def get_frame(self, datetime_string, lat, lon, vessel_colour,
+                  lat_range, lon_range, font_size=30, vessel_radius=3,
+                  text_width_proportion=0.47,
+                  text_height_proportion=0.9375,
+                  font_path=FONT_PATH
+                  ):
+        """
+        Get a background image with the vessel and date overlaid
+
+        :param str datetime_string: The date and time text to display
+        :param float lat: the vessel's latitude
+        :param float lon: the vessel's longitude
+        :param tuple vessel_colour: The 4-component PIL colour to plot the
+            vessel as
+        :param tuple lat_range: the min and max latitudes in the background
+            image
+        :param tuple lon_range: the min and max longitudes in the background
+            image
+        :param int font_size: The size of the font in PIL units
+        :param int vessel_radius: The radius of the vessel marker in pixels:
+        :param float text_width_proportion: the proportion of the way across
+            the screen to put the date time string
+        :param float text_height_proportion: the proportion of the way down
+            the screen to put the date time string
+        :param str font_path: The path to the true-type font to use
+        """
+        frame_image = copy.copy(self.orig_image)
+        draw = ImageDraw.Draw(frame_image)
+        font = ImageFont.truetype(font_path, font_size)
+        text_position = (
+            int(self.width * text_width_proportion),
+            int(self.height * text_height_proportion)
+        )
+        draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
+        lat_pixel = self.height - int((lat - lat_range[0]) /
+                                      abs(lat_range[1] - lat_range[0]) *
+                                      self.height)
+        lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
+                        self.width)
+        print(f'lat_pixel = {lat_pixel}\nlon_pixel = {lon_pixel}')
+        vessel_box = (
+            lon_pixel - vessel_radius,
+            lat_pixel - vessel_radius,
+            lon_pixel + vessel_radius,
+            lat_pixel + vessel_radius
+        )
+        draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
+        return np.flipud(np.asarray(frame_image, np.uint8))
+
+
 def load_era5_field(u_file, v_file, lats, longs):
     """
     Load ERA5 u and v wind files, trim to the specified latitude and longitude
@@ -149,26 +213,12 @@ def main():
     )
 
     background_file = "/home/jseddon/python/elinca/background.png"
-    # Load background image and convert from OpenCV BGR to Pillow RGB (+ alpha)
-    # orig_image = cv2.imread(background_file, cv2.IMREAD_UNCHANGED)[:, :, [2, 1, 0, 3]]
-    orig_image = Image.open(background_file)
-    background_width, background_height = orig_image.size
-    frame_image = copy.copy(orig_image)
-    draw = ImageDraw.Draw(frame_image)
-    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMono.ttf',
-                              30)
-    draw.text((272, 540), '01/10/2013 12:00', font=font, fill=PIL_BLACK)
-    draw.ellipse((0, 0, 5, 5), fill=PIL_ORANGE, outline=PIL_ORANGE)
-    #  = cv2.putText(, '01/10/2013 12:00', )
-    background = np.flipud(np.asarray(frame_image, np.uint8))
-    frame_image = copy.copy(orig_image)
-    draw = ImageDraw.Draw(frame_image)
-    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMono.ttf',
-                              30)
-    draw.text((272, 540), '05/10/2013 12:00', font=font, fill=PIL_BLACK)
-    draw.ellipse((background_width-5, background_height-5,
-                    background_width, background_height), fill=PIL_ORANGE, outline=PIL_ORANGE)
-    background2 = np.flipud(np.asarray(frame_image, np.uint8))
+    background_image = BackgroundImage(background_file)
+    background = background_image.get_frame('01/10/2013 12:00',
+                                            41.47913, -9.27593,
+                                            PIL_ORANGE, lat_range, long_range)
+    background2 = background_image.get_frame('05/10/2013 12:00', 38.0, -15.0,
+                                             PIL_ORANGE, lat_range, long_range)
 
     app = VideoWriteGlfwApp(
         OUTPUT_FILE,
