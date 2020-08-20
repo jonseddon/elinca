@@ -8,6 +8,7 @@ import os
 
 import cv2
 import iris
+import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from OpenGL.GL import (
@@ -26,10 +27,24 @@ from fieldanimation.examples.glfwBackend import glfwApp
 
 OUTPUT_FILE = "image.avi"
 
+# Various predefined PIL colours with full opacity
 PIL_BLACK = (0, 0, 0, 255)
 PIL_ORANGE = (235, 119, 52, 255)
+PIL_GREEN = (90, 252, 3, 255)
 
+# The path to a suitable monospaced true-type font. May vary from
+# computer to computer; not sure how to automate this other than by
+# including the font in this repository
 FONT_PATH = '/usr/share/fonts/truetype/freefont/FreeMono.ttf'
+
+# The top-level directory containing the reanalysis data
+ERA5_DIR = "/data/jseddon/era5"
+
+# The JSON Pandas output containing the interpolated hourly positions
+HOURLY_FILE = '/home/jseddon/python/elinca/hourly_positions.json'
+
+# The file containing the background image
+BACKGROUND_FILE = "/home/jseddon/python/elinca/background.png"
 
 
 class UpdateableAnimation(FieldAnimation):
@@ -77,7 +92,7 @@ class VideoWriteGlfwApp(glfwApp):
     An glfwApp that supports writing videos.
     """
 
-    def __init__(self, videopath, fps=20, title="", width=800, height=600):
+    def __init__(self, videopath, fps=50, title="", width=800, height=600):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -156,7 +171,6 @@ class BackgroundImage:
                                       self.height)
         lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
                         self.width)
-        print(f'lat_pixel = {lat_pixel}\nlon_pixel = {lon_pixel}')
         vessel_box = (
             lon_pixel - vessel_radius,
             lat_pixel - vessel_radius,
@@ -195,30 +209,16 @@ def main():
 
     lat_range = (-28, 42)
     long_range = (-70, 10)
-    era5_dir = "/data/jseddon/era5/2013/10"
-    # First time slice
-    field_uv = load_era5_field(
-        os.path.join(era5_dir, "01/ecmwf-era5_oper_an_sfc_201310010000.10u.nc"),
-        os.path.join(era5_dir, "01/ecmwf-era5_oper_an_sfc_201310010000.10v.nc"),
-        lat_range,
-        long_range,
-    )
 
-    # Second time slice
-    field_uv2 = load_era5_field(
-        os.path.join(era5_dir, "05/ecmwf-era5_oper_an_sfc_201310050000.10u.nc"),
-        os.path.join(era5_dir, "05/ecmwf-era5_oper_an_sfc_201310050000.10v.nc"),
-        lat_range,
-        long_range,
-    )
+    # Load the positions
+    with open(HOURLY_FILE) as fh:
+        hourly = pd.read_json(fh, convert_dates=['time'])
 
-    background_file = "/home/jseddon/python/elinca/background.png"
-    background_image = BackgroundImage(background_file)
-    background = background_image.get_frame('01/10/2013 12:00',
-                                            41.47913, -9.27593,
-                                            PIL_ORANGE, lat_range, long_range)
-    background2 = background_image.get_frame('05/10/2013 12:00', 38.0, -15.0,
-                                             PIL_ORANGE, lat_range, long_range)
+    # Get just October for a reduced subset
+    october = hourly[hourly.time.dt.strftime('%Y%m%d').between('20131001',
+                                                               '20131106')]
+
+    background_image = BackgroundImage(BACKGROUND_FILE)
 
     app = VideoWriteGlfwApp(
         OUTPUT_FILE,
@@ -227,18 +227,44 @@ def main():
         height=display_height,
     )
 
-    fa = UpdateableAnimation(display_width, display_height, field_uv, True, background)
-    fa.palette = False
-    app.set_fa(fa)
+    for i, dp in enumerate(october.iterrows()):
+        de = dp[1]
+        print(f'{de.time.year}{de.time.month:02}{de.time.day:02}')
+        # Load data
+        day_dir = os.path.join(ERA5_DIR, f'{de.time.year}',
+                               f'{de.time.month:02}', f'{de.time.day:02}')
+        file_prefix = (f'ecmwf-era5_oper_an_sfc_{de.time.year}'
+                       f'{de.time.month:02}{de.time.day:02}'
+                       f'{de.time.hour:02}00')
+        field_uv = load_era5_field(
+            os.path.join(day_dir, file_prefix + '.10u.nc'),
+            os.path.join(day_dir, file_prefix + '.10v.nc'),
+            lat_range,
+            long_range,
+        )
 
-    n = 0
-    while n < 400:
-        n += 1
-        if n == 200:
-            print("Next frame")
-            fa.update_field(field_uv2)
-            fa.imageTexture = Texture(data=background2, dtype=GL_UNSIGNED_BYTE)
-        app.run_frame()
+        date_str = de.time.strftime('%d/%m/%Y %H:%M')
+        boat_colour = PIL_GREEN if de.src == 'f' else PIL_ORANGE
+        background = background_image.get_frame(date_str,
+                                                de.lat, de.lon,
+                                                boat_colour,
+                                                lat_range, long_range)
+
+        if i == 0:
+            # If first field then create the animation
+            fa = UpdateableAnimation(display_width, display_height, field_uv,
+                                     True, background)
+            fa.palette = False
+            app.set_fa(fa)
+        else:
+            # On subsequent iterations then just update
+            fa.update_field(field_uv)
+            fa.imageTexture = Texture(data=background, dtype=GL_UNSIGNED_BYTE)
+
+        # Allow animation to update num_updates_per_time for each frame
+        num_updates_per_time = 10
+        for n in range(num_updates_per_time):
+            app.run_frame()
 
     app.close()
 
