@@ -111,14 +111,20 @@ class VideoWriteGlfwApp(glfwApp):
         self._writer.release()
         super().close()
 
-    def run_frame(self):
-        """Update a frame"""
+    def run_frame(self, skip_write=False):
+        """
+        Update a frame
+
+        :param bool skip_write: if True then don't write this frame to the
+            output video.
+        """
         glClearColor(0.0, 0.0, 0.0, 0.0)
         glfw.poll_events()
         glClear(GL_COLOR_BUFFER_BIT)
         self._fa.draw()
         glfw.swap_buffers(self._window)
-        self._writer.write(self._fa.get_video_frame())
+        if not skip_write:
+            self._writer.write(self._fa.get_video_frame())
 
 
 class BackgroundImage:
@@ -262,9 +268,14 @@ def main():
             fa.imageTexture = Texture(data=background, dtype=GL_UNSIGNED_BYTE)
 
         # Allow animation to update num_updates_per_time for each frame
-        num_updates_per_time = 10
+        # Advance the animation 8 times for each time period but only write
+        # 4 of these out to the video
+        num_updates_per_time = 8
         for n in range(num_updates_per_time):
-            app.run_frame()
+            if (n + 1) % 2:
+                app.run_frame(skip_write=True)
+            else:
+                app.run_frame(skip_write=False)
 
     app.close()
 
