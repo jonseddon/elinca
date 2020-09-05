@@ -98,6 +98,8 @@ class VideoWriteGlfwApp(glfwApp):
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         self._writer = cv2.VideoWriter(videopath, fourcc, fps, (width, height), True)
         self._fa = None
+        self.width = width
+        self.height = height
 
     def set_fa(self, fa):
         self._fa = fa
@@ -111,7 +113,8 @@ class VideoWriteGlfwApp(glfwApp):
         self._writer.release()
         super().close()
 
-    def run_frame(self, skip_write=False):
+    def run_frame(self, datetime_string, lat, lon, vessel_colour,
+                  lat_range, lon_range, skip_write=False):
         """
         Update a frame
 
@@ -124,7 +127,10 @@ class VideoWriteGlfwApp(glfwApp):
         self._fa.draw()
         glfw.swap_buffers(self._window)
         if not skip_write:
-            self._writer.write(self._fa.get_video_frame())
+            self._writer.write(overlay_video_frame(self._fa.get_video_frame(),
+                                                   datetime_string, lat, lon,
+                                                   vessel_colour, lat_range,
+                                                   lon_range, self.width, self.height))
 
 
 class BackgroundImage:
@@ -164,27 +170,58 @@ class BackgroundImage:
             the screen to put the date time string
         :param str font_path: The path to the true-type font to use
         """
-        frame_image = copy.copy(self.orig_image)
-        draw = ImageDraw.Draw(frame_image)
-        font = ImageFont.truetype(font_path, font_size)
-        text_position = (
-            int(self.width * text_width_proportion),
-            int(self.height * text_height_proportion)
-        )
-        draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
-        lat_pixel = self.height - int((lat - lat_range[0]) /
-                                      abs(lat_range[1] - lat_range[0]) *
-                                      self.height)
-        lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
-                        self.width)
-        vessel_box = (
-            lon_pixel - vessel_radius,
-            lat_pixel - vessel_radius,
-            lon_pixel + vessel_radius,
-            lat_pixel + vessel_radius
-        )
-        draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
-        return np.flipud(np.asarray(frame_image, np.uint8))
+        # frame_image = copy.copy(self.orig_image)
+        # draw = ImageDraw.Draw(frame_image)
+        # font = ImageFont.truetype(font_path, font_size)
+        # text_position = (
+        #     int(self.width * text_width_proportion),
+        #     int(self.height * text_height_proportion)
+        # )
+        # draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
+        # lat_pixel = self.height - int((lat - lat_range[0]) /
+        #                               abs(lat_range[1] - lat_range[0]) *
+        #                               self.height)
+        # lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
+        #                 self.width)
+        # vessel_box = (
+        #     lon_pixel - vessel_radius,
+        #     lat_pixel - vessel_radius,
+        #     lon_pixel + vessel_radius,
+        #     lat_pixel + vessel_radius
+        # )
+        # draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
+        # return np.flipud(np.asarray(frame_image, np.uint8))
+        return np.flipud(np.asarray(self.orig_image, np.uint8))
+
+
+def overlay_video_frame(frame_image, datetime_string, lat, lon, vessel_colour,
+                  lat_range, lon_range, width, height, font_size=30,
+                  vessel_radius=3,
+                  text_width_proportion=0.6,
+                  text_height_proportion=0.9375,
+                  font_path=FONT_PATH):
+    """Overlay text"""
+    im_pil = Image.fromarray(frame_image)
+    draw = ImageDraw.Draw(im_pil)
+    font = ImageFont.truetype(font_path, font_size)
+    text_position = (
+        int(width * text_width_proportion),
+        int(height * text_height_proportion)
+    )
+    draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
+    lat_pixel = height - int((lat - lat_range[0]) /
+                                  abs(lat_range[1] - lat_range[0]) *
+                                  height)
+    lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
+                    width)
+    vessel_box = (
+        lon_pixel - vessel_radius,
+        lat_pixel - vessel_radius,
+        lon_pixel + vessel_radius,
+        lat_pixel + vessel_radius
+    )
+    draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
+    return np.asarray(im_pil)
 
 
 def load_era5_field(u_file, v_file, lats, longs):
@@ -273,9 +310,15 @@ def main():
         num_updates_per_time = 8
         for n in range(num_updates_per_time):
             if (n + 1) % 2:
-                app.run_frame(skip_write=True)
+                app.run_frame( date_str,
+                                                de.lat, de.lon,
+                                                boat_colour,
+                                               lat_range, long_range, skip_write=True)
             else:
-                app.run_frame(skip_write=False)
+                app.run_frame(date_str,
+                                                de.lat, de.lon,
+                                                boat_colour,
+                                                lat_range, long_range, skip_write=False)
 
     app.close()
 
