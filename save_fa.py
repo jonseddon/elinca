@@ -3,7 +3,6 @@ save_fa.py
 from
 https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on-python-opengl-f534a4638a0d
 """
-import copy
 import os
 
 import cv2
@@ -35,13 +34,13 @@ PIL_GREEN = (90, 252, 3, 255)
 # The path to a suitable monospaced true-type font. May vary from
 # computer to computer; not sure how to automate this other than by
 # including the font in this repository
-FONT_PATH = '/usr/share/fonts/truetype/freefont/FreeMono.ttf'
+FONT_PATH = "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 
 # The top-level directory containing the reanalysis data
 ERA5_DIR = "/data/jseddon/era5"
 
 # The JSON Pandas output containing the interpolated hourly positions
-HOURLY_FILE = '/home/jseddon/python/elinca/hourly_positions.json'
+HOURLY_FILE = "/home/jseddon/python/elinca/hourly_positions.json"
 
 # The file containing the background image
 BACKGROUND_FILE = "/home/jseddon/python/elinca/background.png"
@@ -92,7 +91,7 @@ class VideoWriteGlfwApp(glfwApp):
     An glfwApp that supports writing videos.
     """
 
-    def __init__(self, videopath, fps=50, title="", width=800, height=600):
+    def __init__(self, videopath, fps=30, title="", width=800, height=600):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -113,11 +112,28 @@ class VideoWriteGlfwApp(glfwApp):
         self._writer.release()
         super().close()
 
-    def run_frame(self, datetime_string, lat, lon, vessel_colour,
-                  lat_range, lon_range, skip_write=False):
+    def run_frame(
+        self,
+        datetime_string,
+        lat,
+        lon,
+        vessel_colour,
+        lat_range,
+        lon_range,
+        skip_write=False,
+    ):
         """
         Update a frame
 
+        :param str datetime_string: The string to display in the bottom right
+            of each frame, typically the date and time
+        :param float lat: The decimal latitude position of the vessel
+        :param float lon: The decimal longitude position of the vessel
+        :param tuple vessel_colour: The PIL colour to plot the vessel with
+        :param tuple lat_range: the min and max latitudes in the background
+            image
+        :param tuple lon_range: the min and max longitudes in the background
+            image
         :param bool skip_write: if True then don't write this frame to the
             output video.
         """
@@ -127,16 +143,26 @@ class VideoWriteGlfwApp(glfwApp):
         self._fa.draw()
         glfw.swap_buffers(self._window)
         if not skip_write:
-            self._writer.write(overlay_video_frame(self._fa.get_video_frame(),
-                                                   datetime_string, lat, lon,
-                                                   vessel_colour, lat_range,
-                                                   lon_range, self.width, self.height))
+            self._writer.write(
+                overlay_video_frame(
+                    self._fa.get_video_frame(),
+                    datetime_string,
+                    lat,
+                    lon,
+                    vessel_colour,
+                    lat_range,
+                    lon_range,
+                    self.width,
+                    self.height,
+                )
+            )
 
 
 class BackgroundImage:
     """
     Load a background image and allow the addition of overlays
     """
+
     def __init__(self, filepath):
         """
         Load the image and calculate any necessary properties
@@ -144,81 +170,72 @@ class BackgroundImage:
         self.orig_image = Image.open(filepath)
         self.width, self.height = self.orig_image.size
 
-    def get_frame(self, datetime_string, lat, lon, vessel_colour,
-                  lat_range, lon_range, font_size=30, vessel_radius=3,
-                  text_width_proportion=0.47,
-                  text_height_proportion=0.9375,
-                  font_path=FONT_PATH
-                  ):
+    def get_frame(self):
         """
         Get a background image with the vessel and date overlaid
 
-        :param str datetime_string: The date and time text to display
-        :param float lat: the vessel's latitude
-        :param float lon: the vessel's longitude
-        :param tuple vessel_colour: The 4-component PIL colour to plot the
-            vessel as
-        :param tuple lat_range: the min and max latitudes in the background
-            image
-        :param tuple lon_range: the min and max longitudes in the background
-            image
-        :param int font_size: The size of the font in PIL units
-        :param int vessel_radius: The radius of the vessel marker in pixels:
-        :param float text_width_proportion: the proportion of the way across
-            the screen to put the date time string
-        :param float text_height_proportion: the proportion of the way down
-            the screen to put the date time string
-        :param str font_path: The path to the true-type font to use
+        :returns: The backgrund image as a Numpy array orientated for the
+            FieldAnimation package.
         """
-        # frame_image = copy.copy(self.orig_image)
-        # draw = ImageDraw.Draw(frame_image)
-        # font = ImageFont.truetype(font_path, font_size)
-        # text_position = (
-        #     int(self.width * text_width_proportion),
-        #     int(self.height * text_height_proportion)
-        # )
-        # draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
-        # lat_pixel = self.height - int((lat - lat_range[0]) /
-        #                               abs(lat_range[1] - lat_range[0]) *
-        #                               self.height)
-        # lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
-        #                 self.width)
-        # vessel_box = (
-        #     lon_pixel - vessel_radius,
-        #     lat_pixel - vessel_radius,
-        #     lon_pixel + vessel_radius,
-        #     lat_pixel + vessel_radius
-        # )
-        # draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
-        # return np.flipud(np.asarray(frame_image, np.uint8))
         return np.flipud(np.asarray(self.orig_image, np.uint8))
 
 
-def overlay_video_frame(frame_image, datetime_string, lat, lon, vessel_colour,
-                  lat_range, lon_range, width, height, font_size=30,
-                  vessel_radius=3,
-                  text_width_proportion=0.6,
-                  text_height_proportion=0.9375,
-                  font_path=FONT_PATH):
-    """Overlay text"""
+def overlay_video_frame(
+    frame_image,
+    datetime_string,
+    lat,
+    lon,
+    vessel_colour,
+    lat_range,
+    lon_range,
+    width,
+    height,
+    font_size=30,
+    vessel_radius=3,
+    text_width_proportion=0.6,
+    text_height_proportion=0.9375,
+    font_path=FONT_PATH,
+):
+    """"
+    Overlay the vessel position and the specified date and time string on
+
+    :param numpy.ndarray frame_image: The video frame in CV2 format
+    :param str datetime_string: The date and time text to display
+    :param float lat: the vessel's latitude
+    :param float lon: the vessel's longitude
+    :param tuple vessel_colour: The 4-component PIL colour to plot the
+        vessel as
+    :param tuple lat_range: the min and max latitudes in the background
+        image
+    :param tuple lon_range: the min and max longitudes in the background
+        image
+    :param int font_size: The size of the font in PIL units
+    :param int vessel_radius: The radius of the vessel marker in pixels:
+    :param float text_width_proportion: the proportion of the way across
+        the screen to put the date time string
+    :param float text_height_proportion: the proportion of the way down
+        the screen to put the date time string
+    :param str font_path: The path to the true-type font to use
+    :returns: The frame with the overlaid information in CV2 format
+    :rtype: numpy.ndarray
+    """
     im_pil = Image.fromarray(frame_image)
     draw = ImageDraw.Draw(im_pil)
     font = ImageFont.truetype(font_path, font_size)
     text_position = (
         int(width * text_width_proportion),
-        int(height * text_height_proportion)
+        int(height * text_height_proportion),
     )
     draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
-    lat_pixel = height - int((lat - lat_range[0]) /
-                                  abs(lat_range[1] - lat_range[0]) *
-                                  height)
-    lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) *
-                    width)
+    lat_pixel = height - int(
+        (lat - lat_range[0]) / abs(lat_range[1] - lat_range[0]) * height
+    )
+    lon_pixel = int((lon - lon_range[0]) / abs(lon_range[1] - lon_range[0]) * width)
     vessel_box = (
         lon_pixel - vessel_radius,
         lat_pixel - vessel_radius,
         lon_pixel + vessel_radius,
-        lat_pixel + vessel_radius
+        lat_pixel + vessel_radius,
     )
     draw.ellipse(vessel_box, fill=vessel_colour, outline=vessel_colour)
     return np.asarray(im_pil)
@@ -255,13 +272,13 @@ def main():
 
     # Load the positions
     with open(HOURLY_FILE) as fh:
-        hourly = pd.read_json(fh, convert_dates=['time'])
+        hourly = pd.read_json(fh, convert_dates=["time"])
 
     # Get just October for a reduced subset
-    october = hourly[hourly.time.dt.strftime('%Y%m%d').between('20131001',
-                                                               '20131106')]
+    october = hourly[hourly.time.dt.strftime("%Y%m%d").between("20131001", "20131106")]
 
     background_image = BackgroundImage(BACKGROUND_FILE)
+    background = background_image.get_frame()
 
     app = VideoWriteGlfwApp(
         OUTPUT_FILE,
@@ -272,53 +289,63 @@ def main():
 
     for i, dp in enumerate(october.iterrows()):
         de = dp[1]
-        print(f'{de.time.year}{de.time.month:02}{de.time.day:02}')
+        print(f"{de.time.year}{de.time.month:02}{de.time.day:02}")
         # Load data
-        day_dir = os.path.join(ERA5_DIR, f'{de.time.year}',
-                               f'{de.time.month:02}', f'{de.time.day:02}')
-        file_prefix = (f'ecmwf-era5_oper_an_sfc_{de.time.year}'
-                       f'{de.time.month:02}{de.time.day:02}'
-                       f'{de.time.hour:02}00')
+        day_dir = os.path.join(
+            ERA5_DIR, f"{de.time.year}", f"{de.time.month:02}", f"{de.time.day:02}"
+        )
+        file_prefix = (
+            f"ecmwf-era5_oper_an_sfc_{de.time.year}"
+            f"{de.time.month:02}{de.time.day:02}"
+            f"{de.time.hour:02}00"
+        )
         field_uv = load_era5_field(
-            os.path.join(day_dir, file_prefix + '.10u.nc'),
-            os.path.join(day_dir, file_prefix + '.10v.nc'),
+            os.path.join(day_dir, file_prefix + ".10u.nc"),
+            os.path.join(day_dir, file_prefix + ".10v.nc"),
             lat_range,
             long_range,
         )
 
-        date_str = de.time.strftime('%d/%m/%Y %H:%M')
-        boat_colour = PIL_GREEN if de.src == 'f' else PIL_ORANGE
-        background = background_image.get_frame(date_str,
-                                                de.lat, de.lon,
-                                                boat_colour,
-                                                lat_range, long_range)
+        date_str = de.time.strftime("%d/%m/%Y %H:%M")
+        boat_colour = PIL_GREEN if de.src == "f" else PIL_ORANGE
 
         if i == 0:
             # If first field then create the animation
-            fa = UpdateableAnimation(display_width, display_height, field_uv,
-                                     True, background)
+            fa = UpdateableAnimation(
+                display_width, display_height, field_uv, True, background
+            )
             fa.palette = False
             app.set_fa(fa)
         else:
             # On subsequent iterations then just update
             fa.update_field(field_uv)
-            fa.imageTexture = Texture(data=background, dtype=GL_UNSIGNED_BYTE)
 
         # Allow animation to update num_updates_per_time for each frame
-        # Advance the animation 8 times for each time period but only write
-        # 4 of these out to the video
-        num_updates_per_time = 8
+        # Advance the animation num_updates_per_time for each time period but
+        # only write out to the video every output_frame_every_n_frames frames.
+        num_updates_per_time = 9
+        output_frame_every_n_frames = 3
         for n in range(num_updates_per_time):
-            if (n + 1) % 2:
-                app.run_frame( date_str,
-                                                de.lat, de.lon,
-                                                boat_colour,
-                                               lat_range, long_range, skip_write=True)
+            if (n + 1) % output_frame_every_n_frames:
+                app.run_frame(
+                    date_str,
+                    de.lat,
+                    de.lon,
+                    boat_colour,
+                    lat_range,
+                    long_range,
+                    skip_write=True,
+                )
             else:
-                app.run_frame(date_str,
-                                                de.lat, de.lon,
-                                                boat_colour,
-                                                lat_range, long_range, skip_write=False)
+                app.run_frame(
+                    date_str,
+                    de.lat,
+                    de.lon,
+                    boat_colour,
+                    lat_range,
+                    long_range,
+                    skip_write=False,
+                )
 
     app.close()
 
