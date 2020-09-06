@@ -45,6 +45,10 @@ HOURLY_FILE = "/home/jseddon/python/elinca/hourly_positions.json"
 # The file containing the background image
 BACKGROUND_FILE = "/home/jseddon/python/elinca/background.png"
 
+# Paths of images to include at the start and end
+OPENING_IMAGE = 'credits/start_leg_02_03.png'
+END_IMAGE = 'credits/end.png'
+
 
 class UpdateableAnimation(FieldAnimation):
     """
@@ -91,7 +95,7 @@ class VideoWriteGlfwApp(glfwApp):
     An glfwApp that supports writing videos.
     """
 
-    def __init__(self, videopath, fps=30, title="", width=800, height=600):
+    def __init__(self, videopath, fps=30, title="", width=800, height=800):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -99,6 +103,7 @@ class VideoWriteGlfwApp(glfwApp):
         self._fa = None
         self.width = width
         self.height = height
+        self._fps = fps
 
     def set_fa(self, fa):
         self._fa = fa
@@ -156,6 +161,18 @@ class VideoWriteGlfwApp(glfwApp):
                     self.height,
                 )
             )
+
+    def write_image(self, image_path, number_seconds):
+        """
+        Load the specified image and save it to the output video for the
+        specified number of frames.
+
+        :param str image_path: The path of the image
+        :param int number_seconds: The number of seconds to show it for
+        """
+        image = cv2.imread(image_path)
+        for index in range(number_seconds * self._fps):
+            self._writer.write(image)
 
 
 class BackgroundImage:
@@ -267,7 +284,7 @@ def main():
     display_width = 800
     display_height = 800
 
-    lat_range = (-28, 42)
+    lat_range = (-33, 47)
     long_range = (-70, 10)
 
     # Load the positions
@@ -286,6 +303,8 @@ def main():
         width=display_width,
         height=display_height,
     )
+
+    app.write_image(OPENING_IMAGE, 5)
 
     for i, dp in enumerate(october.iterrows()):
         de = dp[1]
@@ -347,6 +366,7 @@ def main():
                     skip_write=False,
                 )
 
+    app.write_image(END_IMAGE, 10)
     app.close()
 
 
