@@ -46,8 +46,8 @@ HOURLY_FILE = "/home/jseddon/python/elinca/hourly_positions.json"
 BACKGROUND_FILE = "/home/jseddon/python/elinca/background.png"
 
 # Paths of images to include at the start and end
-OPENING_IMAGE = 'credits/start_leg_02_03.png'
-END_IMAGE = 'credits/end.png'
+OPENING_IMAGE = "credits/start_leg_02_03.png"
+END_IMAGE = "credits/end.png"
 
 
 class UpdateableAnimation(FieldAnimation):
