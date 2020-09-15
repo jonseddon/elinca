@@ -1,5 +1,7 @@
 """
 save_fa.py
+Copyright (c) 2020, Jon Seddon
+
 from
 https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on-python-opengl-f534a4638a0d
 """

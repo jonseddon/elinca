@@ -1,6 +1,6 @@
 """
 wind_arrows.py
-(c) Jon Seddon 2020
+Copyright (c) 2020, Jon Seddon
 
 Plot Elinca's position in October 2013.
 
