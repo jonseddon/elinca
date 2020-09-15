@@ -1,3 +1,7 @@
+Copyright (c) 2020, Jon Seddon
+
+Please see LICENSE for further details.
+
 Requires:
 
 git@bitbucket.org:bvidmar/fieldanimation.git (https://bvidmar.bitbucket.io/fieldanimation/latest/ for documentation)
