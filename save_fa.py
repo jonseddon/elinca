@@ -31,7 +31,7 @@ from fieldanimation.examples.glfwBackend import glfwApp
 
 
 config = {
-    'global': {
+    "global": {
         "font_path": "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
         "era5_dir": "/data/jseddon/era5",
         "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json",
@@ -49,9 +49,9 @@ config = {
             "lon_range": (-70, 10),
             "start_date": "20131001",
             "end_date": "20131106",
-            "filename": "leg2_3.avi"
+            "filename": "leg2_3.avi",
         }
-    }
+    },
 }
 
 # Various predefined PIL colours with full opacity
@@ -105,8 +105,7 @@ class VideoWriteGlfwApp(glfwApp):
     An glfwApp that supports writing videos.
     """
 
-    def __init__(self, videopath, font_path, fps=30, title="",
-                 width=800, height=800):
+    def __init__(self, videopath, font_path, fps=30, title="", width=800, height=800):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -171,7 +170,7 @@ class VideoWriteGlfwApp(glfwApp):
                     lon_range,
                     self.width,
                     self.height,
-                    self._font_path
+                    self._font_path,
                 )
             )
 
@@ -308,18 +307,21 @@ def produce_leg(global_config, leg_config):
         hourly = pd.read_json(fh, convert_dates=["time"])
 
     # Get the date range for this leg
-    october = hourly[hourly.time.dt.strftime("%Y%m%d").
-        between(leg_config["start_date"], leg_config["end_date"])]
+    october = hourly[
+        hourly.time.dt.strftime("%Y%m%d").between(
+            leg_config["start_date"], leg_config["end_date"]
+        )
+    ]
 
     background_image = BackgroundImage(leg_config["background_file"])
     background = background_image.get_frame()
 
     app = VideoWriteGlfwApp(
         leg_config["filename"],
-        global_config['font_path'],
+        global_config["font_path"],
         title="Elinca Animation",
         width=leg_config["width"],
-        height=leg_config["height"]
+        height=leg_config["height"],
     )
 
     app.write_image(leg_config["opening_image"], leg_config["opening_seconds"])
@@ -329,8 +331,10 @@ def produce_leg(global_config, leg_config):
         logging.debug(f"{de.time.year}{de.time.month:02}{de.time.day:02}")
         # Load data
         day_dir = os.path.join(
-            global_config["era5_dir"], f"{de.time.year}",
-            f"{de.time.month:02}", f"{de.time.day:02}"
+            global_config["era5_dir"],
+            f"{de.time.year}",
+            f"{de.time.month:02}",
+            f"{de.time.day:02}",
         )
         file_prefix = (
             f"ecmwf-era5_oper_an_sfc_{de.time.year}"
@@ -341,7 +345,7 @@ def produce_leg(global_config, leg_config):
             os.path.join(day_dir, file_prefix + ".10u.nc"),
             os.path.join(day_dir, file_prefix + ".10v.nc"),
             leg_config["lat_range"],
-            leg_config["lon_range"]
+            leg_config["lon_range"],
         )
 
         date_str = de.time.strftime("%d/%m/%Y %H:%M")
@@ -350,8 +354,7 @@ def produce_leg(global_config, leg_config):
         if i == 0:
             # If first field then create the animation
             fa = UpdateableAnimation(
-                leg_config["width"], leg_config["height"], field_uv, True,
-                background
+                leg_config["width"], leg_config["height"], field_uv, True, background
             )
             fa.palette = False
             app.set_fa(fa)
@@ -394,14 +397,16 @@ def parse_args():
     """
     Parse command-line arguments
     """
-    parser = argparse.ArgumentParser(description='Produce Elinca wind particle '
-                                                 'animation videos')
+    parser = argparse.ArgumentParser(
+        description="Produce Elinca wind particle " "animation videos"
+    )
     all_or_leg = parser.add_mutually_exclusive_group(required=True)
-    all_or_leg.add_argument("-a", "--all", help="Produce all legs",
-                          action='store_true')
-    all_or_leg.add_argument("-l", "--leg_name", help="The name of the leg from "
-                                                     "the config file to "
-                                                     "produce")
+    all_or_leg.add_argument("-a", "--all", help="Produce all legs", action="store_true")
+    all_or_leg.add_argument(
+        "-l",
+        "--leg_name",
+        help="The name of the leg from " "the config file to " "produce",
+    )
     return parser.parse_args()
 
 
@@ -409,16 +414,15 @@ def main(args):
     """Main entry"""
     if not args.all:
         if not args.leg_name in config["videos"]:
-            logging.error(f'Leg name {args.leg_name} not found in the '
-                          f'configuration.')
+            logging.error(f"Leg name {args.leg_name} not found in the configuration.")
             sys.exit(1)
-        produce_leg(config['global'], config['videos'][args.leg_name])
+        produce_leg(config["global"], config["videos"][args.leg_name])
     else:
-        for leg_name in config['videos']:
-            produce_leg(config['global'], config['videos'][leg_name])
+        for leg_name in config["videos"]:
+            produce_leg(config["global"], config["videos"][leg_name])
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
     args = parse_args()
     main(args)
