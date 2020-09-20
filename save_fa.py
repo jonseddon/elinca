@@ -5,7 +5,10 @@ Copyright (c) 2020, Jon Seddon
 from
 https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on-python-opengl-f534a4638a0d
 """
+import argparse
+import logging
 import os
+import sys
 
 import cv2
 import iris
@@ -26,30 +29,35 @@ import glfw
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
 from fieldanimation.examples.glfwBackend import glfwApp
 
-OUTPUT_FILE = "image.avi"
+
+config = {
+    'global': {
+        "font_path": "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+        "era5_dir": "/data/jseddon/era5",
+        "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json",
+    },
+    "videos": {
+        "legs_2_3": {
+            "background_file": "/home/jseddon/python/elinca/background.png",
+            "opening_image": "credits/start_leg_02_03.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (-33, 47),
+            "lon_range": (-70, 10),
+            "start_date": "20131001",
+            "end_date": "20131106",
+            "filename": "leg2_3.avi"
+        }
+    }
+}
 
 # Various predefined PIL colours with full opacity
 PIL_BLACK = (0, 0, 0, 255)
 PIL_ORANGE = (235, 119, 52, 255)
 PIL_GREEN = (90, 252, 3, 255)
-
-# The path to a suitable monospaced true-type font. May vary from
-# computer to computer; not sure how to automate this other than by
-# including the font in this repository
-FONT_PATH = "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
-
-# The top-level directory containing the reanalysis data
-ERA5_DIR = "/data/jseddon/era5"
-
-# The JSON Pandas output containing the interpolated hourly positions
-HOURLY_FILE = "/home/jseddon/python/elinca/hourly_positions.json"
-
-# The file containing the background image
-BACKGROUND_FILE = "/home/jseddon/python/elinca/background.png"
-
-# Paths of images to include at the start and end
-OPENING_IMAGE = "credits/start_leg_02_03.png"
-END_IMAGE = "credits/end.png"
 
 
 class UpdateableAnimation(FieldAnimation):
@@ -97,7 +105,8 @@ class VideoWriteGlfwApp(glfwApp):
     An glfwApp that supports writing videos.
     """
 
-    def __init__(self, videopath, fps=30, title="", width=800, height=800):
+    def __init__(self, videopath, font_path, fps=30, title="",
+                 width=800, height=800):
         super().__init__(title=title, width=width, height=height, resizable=False)
         # Setup the video writing
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -106,6 +115,7 @@ class VideoWriteGlfwApp(glfwApp):
         self.width = width
         self.height = height
         self._fps = fps
+        self._font_path = font_path
 
     def set_fa(self, fa):
         self._fa = fa
@@ -161,6 +171,7 @@ class VideoWriteGlfwApp(glfwApp):
                     lon_range,
                     self.width,
                     self.height,
+                    self._font_path
                 )
             )
 
@@ -209,11 +220,11 @@ def overlay_video_frame(
     lon_range,
     width,
     height,
+    font_path,
     font_size=30,
     vessel_radius=3,
     text_width_proportion=0.6,
     text_height_proportion=0.9375,
-    font_path=FONT_PATH,
 ):
     """"
     Overlay the vessel position and the specified date and time string on
@@ -282,38 +293,44 @@ def load_era5_field(u_file, v_file, lats, longs):
     return field_uv
 
 
-def main():
-    display_width = 800
-    display_height = 800
+def produce_leg(global_config, leg_config):
+    """
+    Generate a window and animation for the leg with the configuration that
+    has been passed in.
 
-    lat_range = (-33, 47)
-    long_range = (-70, 10)
+    :param dict global_config: global configuration parameters
+    :param dict leg_config: the configuration for this leg
+    """
+    logging.info(f'Producing {leg_config["filename"]}')
 
     # Load the positions
-    with open(HOURLY_FILE) as fh:
+    with open(global_config["hourly_file"]) as fh:
         hourly = pd.read_json(fh, convert_dates=["time"])
 
-    # Get just October for a reduced subset
-    october = hourly[hourly.time.dt.strftime("%Y%m%d").between("20131001", "20131106")]
+    # Get the date range for this leg
+    october = hourly[hourly.time.dt.strftime("%Y%m%d").
+        between(leg_config["start_date"], leg_config["end_date"])]
 
-    background_image = BackgroundImage(BACKGROUND_FILE)
+    background_image = BackgroundImage(leg_config["background_file"])
     background = background_image.get_frame()
 
     app = VideoWriteGlfwApp(
-        OUTPUT_FILE,
+        leg_config["filename"],
+        global_config['font_path'],
         title="Elinca Animation",
-        width=display_width,
-        height=display_height,
+        width=leg_config["width"],
+        height=leg_config["height"]
     )
 
-    app.write_image(OPENING_IMAGE, 5)
+    app.write_image(leg_config["opening_image"], leg_config["opening_seconds"])
 
     for i, dp in enumerate(october.iterrows()):
         de = dp[1]
-        print(f"{de.time.year}{de.time.month:02}{de.time.day:02}")
+        logging.debug(f"{de.time.year}{de.time.month:02}{de.time.day:02}")
         # Load data
         day_dir = os.path.join(
-            ERA5_DIR, f"{de.time.year}", f"{de.time.month:02}", f"{de.time.day:02}"
+            global_config["era5_dir"], f"{de.time.year}",
+            f"{de.time.month:02}", f"{de.time.day:02}"
         )
         file_prefix = (
             f"ecmwf-era5_oper_an_sfc_{de.time.year}"
@@ -323,8 +340,8 @@ def main():
         field_uv = load_era5_field(
             os.path.join(day_dir, file_prefix + ".10u.nc"),
             os.path.join(day_dir, file_prefix + ".10v.nc"),
-            lat_range,
-            long_range,
+            leg_config["lat_range"],
+            leg_config["lon_range"]
         )
 
         date_str = de.time.strftime("%d/%m/%Y %H:%M")
@@ -333,7 +350,8 @@ def main():
         if i == 0:
             # If first field then create the animation
             fa = UpdateableAnimation(
-                display_width, display_height, field_uv, True, background
+                leg_config["width"], leg_config["height"], field_uv, True,
+                background
             )
             fa.palette = False
             app.set_fa(fa)
@@ -353,8 +371,8 @@ def main():
                     de.lat,
                     de.lon,
                     boat_colour,
-                    lat_range,
-                    long_range,
+                    leg_config["lat_range"],
+                    leg_config["lon_range"],
                     skip_write=True,
                 )
             else:
@@ -363,14 +381,44 @@ def main():
                     de.lat,
                     de.lon,
                     boat_colour,
-                    lat_range,
-                    long_range,
+                    leg_config["lat_range"],
+                    leg_config["lon_range"],
                     skip_write=False,
                 )
 
-    app.write_image(END_IMAGE, 10)
+    app.write_image(leg_config["end_image"], leg_config["end_seconds"])
     app.close()
 
 
+def parse_args():
+    """
+    Parse command-line arguments
+    """
+    parser = argparse.ArgumentParser(description='Produce Elinca wind particle '
+                                                 'animation videos')
+    all_or_leg = parser.add_mutually_exclusive_group(required=True)
+    all_or_leg.add_argument("-a", "--all", help="Produce all legs",
+                          action='store_true')
+    all_or_leg.add_argument("-l", "--leg_name", help="The name of the leg from "
+                                                     "the config file to "
+                                                     "produce")
+    return parser.parse_args()
+
+
+def main(args):
+    """Main entry"""
+    if not args.all:
+        if not args.leg_name in config["videos"]:
+            logging.error(f'Leg name {args.leg_name} not found in the '
+                          f'configuration.')
+            sys.exit(1)
+        produce_leg(config['global'], config['videos'][args.leg_name])
+    else:
+        for leg_name in config['videos']:
+            produce_leg(config['global'], config['videos'][leg_name])
+
+
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+    args = parse_args()
+    main(args)
