@@ -328,7 +328,9 @@ def produce_leg(global_config, leg_config):
 
     for i, dp in enumerate(october.iterrows()):
         de = dp[1]
-        logging.debug(f"{de.time.year}{de.time.month:02}{de.time.day:02}")
+        logging.debug(
+            f"{de.time.year}{de.time.month:02}{de.time.day:02} {de.time.hour:02}:00"
+        )
         # Load data
         day_dir = os.path.join(
             global_config["era5_dir"],
@@ -407,6 +409,9 @@ def parse_args():
         "--leg_name",
         help="The name of the leg from " "the config file to " "produce",
     )
+    parser.add_argument(
+        "-d", "--debug", help="dsiplay debug information", action="store_true"
+    )
     return parser.parse_args()
 
 
@@ -423,6 +428,9 @@ def main(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
     args = parse_args()
+    if args.debug:
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
+    else:
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
     main(args)
