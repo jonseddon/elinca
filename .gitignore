@@ -1,1 +1,6 @@
 .idea/
+backgrounds/
+plots/
+credits/*.png
+*.avi
+.ipynb_checkpoints/
