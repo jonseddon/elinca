@@ -37,6 +37,21 @@ config = {
         "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json",
     },
     "videos": {
+        "pre_delivery": {
+            "background_file": "/home/jseddon/python/elinca/backgrounds/"
+                               "leg_pre_delivery.png",
+            "opening_image": "credits/start_leg_pre_delivery.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (49.7, 58.7),
+            "lon_range": (-11, -2),
+            "start_date": "20130917",
+            "end_date": "20130923",
+            "filename": "elinca_pre_delivery.avi",
+        },
         "leg_1": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/"
                                "leg_01.png",
@@ -127,6 +142,21 @@ config = {
             "end_date": "20140308",
             "filename": "elinca_leg_07_08.avi",
         },
+        "leg_9": {
+            "background_file": "/home/jseddon/python/elinca/backgrounds/"
+                               "leg_09.png",
+            "opening_image": "credits/start_leg_09.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (-37.5, -22),
+            "lon_range": (-57.5, -42),
+            "start_date": "20140312",
+            "end_date": "20140329",
+            "filename": "elinca_leg_09.avi",
+        },
         "leg_10": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/"
                                "leg_10.png",
@@ -141,7 +171,53 @@ config = {
             "start_date": "20140331",
             "end_date": "20140428",
             "filename": "elinca_leg_10.avi",
-        }
+        },
+        "leg_11": {
+            "background_file": "/home/jseddon/python/elinca/backgrounds/"
+                               "leg_11.png",
+            "opening_image": "credits/start_leg_11.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (31.6, 49.6),
+            "lon_range": (-26, -8),
+            "start_date": "20140429",
+            "end_date": "20140509",
+            "filename": "elinca_leg_11.avi",
+        },
+        "leg_12": {
+            "background_file": "/home/jseddon/python/elinca/backgrounds/"
+                               "leg_12.png",
+            "opening_image": "credits/start_leg_12.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (43, 51),
+            "lon_range": (-10.7, -2.7),
+            "start_date": "20140510",
+            "end_date": "20140517",
+            "filename": "elinca_leg_12.avi",
+        },
+        "post_delivery": {
+            "background_file": "/home/jseddon/python/elinca/backgrounds/"
+                               "leg_pre_delivery.png",
+            "opening_image": "credits/start_leg_post_delivery.png",
+            "opening_seconds": 5,
+            "end_image": "credits/end.png",
+            "end_seconds": 10,
+            "width": 800,
+            "height": 800,
+            "lat_range": (49.7, 58.7),
+            "lon_range": (-11, -2),
+            "start_date": "20140518",
+            "end_date": "20140524",
+            "filename": "elinca_post_delivery.avi",
+        },
+
     },
 }
 
@@ -398,7 +474,7 @@ def produce_leg(global_config, leg_config):
         hourly = pd.read_json(fh, convert_dates=["time"])
 
     # Get the date range for this leg
-    october = hourly[
+    leg_positions = hourly[
         hourly.time.dt.strftime("%Y%m%d").between(
             leg_config["start_date"], leg_config["end_date"]
         )
@@ -417,7 +493,7 @@ def produce_leg(global_config, leg_config):
 
     app.write_image(leg_config["opening_image"], leg_config["opening_seconds"])
 
-    for i, dp in enumerate(october.iterrows()):
+    for i, dp in enumerate(leg_positions.iterrows()):
         de = dp[1]
         logging.debug(
             f"{de.time.year}{de.time.month:02}{de.time.day:02} {de.time.hour:02}:00"
