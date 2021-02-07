@@ -2,7 +2,24 @@
     "global": {
         "font_path": "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
         "era5_dir": "/data/jseddon/era5",
-        "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json"
+        "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json",
+        "num_frames_per_time": 9,
+        "output_frame_every_n_frames": 3,
+        "text_colour":[
+            0,
+            0,
+            0
+        ],
+        "interpolated_colour":[
+            52,
+            119,
+            235
+        ],
+        "fix_colour":[
+            90,
+            252,
+            3
+        ]
     },
     "videos": {
         "pre_delivery": {
@@ -22,8 +39,9 @@
                 -2
             ],
             "start_date": "20130917",
-            "end_date": "20130923",
-            "filename": "elinca_pre_delivery.avi"
+            "end_date": "20130922",
+            "filename": "elinca_pre_delivery.avi",
+            "output_frame_every_n_frames": 1
         },
         "leg_1": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/leg_01.png",
@@ -43,7 +61,8 @@
             ],
             "start_date": "20130924",
             "end_date": "20131001",
-            "filename": "elinca_leg_01.avi"
+            "filename": "elinca_leg_01.avi",
+            "output_frame_every_n_frames": 1
         },
         "legs_2_3": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/leg_02_03.png",
@@ -163,7 +182,8 @@
             ],
             "start_date": "20140312",
             "end_date": "20140329",
-            "filename": "elinca_leg_09.avi"
+            "filename": "elinca_leg_09.avi",
+            "output_frame_every_n_frames": 1
         },
         "leg_10": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/leg_10.png",
@@ -203,7 +223,8 @@
             ],
             "start_date": "20140429",
             "end_date": "20140509",
-            "filename": "elinca_leg_11.avi"
+            "filename": "elinca_leg_11.avi",
+            "output_frame_every_n_frames": 1
         },
         "leg_12": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/leg_12.png",
@@ -223,7 +244,8 @@
             ],
             "start_date": "20140510",
             "end_date": "20140517",
-            "filename": "elinca_leg_12.avi"
+            "filename": "elinca_leg_12.avi",
+            "output_frame_every_n_frames": 1
         },
         "post_delivery": {
             "background_file": "/home/jseddon/python/elinca/backgrounds/leg_pre_delivery.png",
@@ -243,7 +265,8 @@
             ],
             "start_date": "20140518",
             "end_date": "20140524",
-            "filename": "elinca_post_delivery.avi"
+            "filename": "elinca_post_delivery.avi",
+            "output_frame_every_n_frames": 1
         }
     }
 }

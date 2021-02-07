@@ -31,12 +31,6 @@ from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
 from fieldanimation.examples.glfwBackend import glfwApp
 
 
-# Various predefined PIL colours with full opacity
-PIL_BLACK = (0, 0, 0, 255)
-PIL_ORANGE = (235, 119, 52, 255)
-PIL_GREEN = (90, 252, 3, 255)
-
-
 class UpdateableAnimation(FieldAnimation):
     """
     A FieldAnimation class that allows the vector field to be updated as
@@ -111,6 +105,7 @@ class VideoWriteGlfwApp(glfwApp):
         lat,
         lon,
         vessel_colour,
+        text_colour,
         lat_range,
         lon_range,
         skip_write=False,
@@ -122,7 +117,8 @@ class VideoWriteGlfwApp(glfwApp):
             of each frame, typically the date and time
         :param float lat: The decimal latitude position of the vessel
         :param float lon: The decimal longitude position of the vessel
-        :param tuple vessel_colour: The PIL colour to plot the vessel with
+        :param tuple vessel_colour: The PIL BGR colour to plot the vessel with
+        :param tuple text_colour: The PIL BGR colour for the text
         :param tuple lat_range: the min and max latitudes in the background
             image
         :param tuple lon_range: the min and max longitudes in the background
@@ -143,6 +139,7 @@ class VideoWriteGlfwApp(glfwApp):
                     lat,
                     lon,
                     vessel_colour,
+                    text_colour,
                     lat_range,
                     lon_range,
                     self.width,
@@ -192,6 +189,7 @@ def overlay_video_frame(
     lat,
     lon,
     vessel_colour,
+    text_colour,
     lat_range,
     lon_range,
     width,
@@ -209,8 +207,9 @@ def overlay_video_frame(
     :param str datetime_string: The date and time text to display
     :param float lat: the vessel's latitude
     :param float lon: the vessel's longitude
-    :param tuple vessel_colour: The 4-component PIL colour to plot the
+    :param tuple vessel_colour: The 4-component PIL BGR colour to plot the
         vessel as
+    :param tuple text_colour: The 4-component PIL BGR colour for the text
     :param tuple lat_range: the min and max latitudes in the background
         image
     :param tuple lon_range: the min and max longitudes in the background
@@ -232,7 +231,7 @@ def overlay_video_frame(
         int(width * text_width_proportion),
         int(height * text_height_proportion),
     )
-    draw.text(text_position, datetime_string, font=font, fill=PIL_BLACK)
+    draw.text(text_position, datetime_string, font=font, fill=text_colour)
     lat_pixel = height - int(
         (lat - lat_range[0]) / abs(lat_range[1] - lat_range[0]) * height
     )
@@ -328,7 +327,8 @@ def produce_leg(global_config, leg_config):
         )
 
         date_str = de.time.strftime("%d/%m/%Y %H:%M")
-        boat_colour = PIL_GREEN if de.src == "f" else PIL_ORANGE
+        boat_colour = (tuple(global_config["fix_colour"]) if de.src == "f" else
+                       tuple(global_config["interpolated_colour"]))
 
         if i == 0:
             # If first field then create the animation
@@ -341,32 +341,25 @@ def produce_leg(global_config, leg_config):
             # On subsequent iterations then just update
             fa.update_field(field_uv)
 
-        # Allow animation to update num_updates_per_time for each frame
-        # Advance the animation num_updates_per_time for each time period but
+        # Allow animation to update num_frames_per_time for each frame
+        # Advance the animation num_frames_per_time for each time period but
         # only write out to the video every output_frame_every_n_frames frames.
-        num_updates_per_time = 9
-        output_frame_every_n_frames = 3
-        for n in range(num_updates_per_time):
-            if (n + 1) % output_frame_every_n_frames:
-                app.run_frame(
-                    date_str,
-                    de.lat,
-                    de.lon,
-                    boat_colour,
-                    leg_config["lat_range"],
-                    leg_config["lon_range"],
-                    skip_write=True,
-                )
-            else:
-                app.run_frame(
-                    date_str,
-                    de.lat,
-                    de.lon,
-                    boat_colour,
-                    leg_config["lat_range"],
-                    leg_config["lon_range"],
-                    skip_write=False,
-                )
+        num_frames_per_time = leg_config.get("num_frames_per_time",
+                                             global_config["num_frames_per_time"])
+        output_frame_every_n_frames = leg_config.get("output_frame_every_n_frames",
+                                                     global_config["output_frame_every_n_frames"])
+        for n in range(num_frames_per_time):
+            skip_write = True if (n + 1) % output_frame_every_n_frames else False
+            app.run_frame(
+                date_str,
+                de.lat,
+                de.lon,
+                boat_colour,
+                tuple(global_config["text_colour"]),
+                leg_config["lat_range"],
+                leg_config["lon_range"],
+                skip_write=skip_write,
+            )
 
     app.write_image(leg_config["end_image"], leg_config["end_seconds"])
     app.close()
