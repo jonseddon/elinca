@@ -1,11 +1,12 @@
 """
 save_fa.py
-Copyright (c) 2020, Jon Seddon
+Copyright (c) 2021, Jon Seddon
 
 from
 https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on-python-opengl-f534a4638a0d
 """
 import argparse
+import json
 import logging
 import os
 import sys
@@ -29,197 +30,6 @@ import glfw
 from fieldanimation import FieldAnimation, field2RGB, modulus, Texture
 from fieldanimation.examples.glfwBackend import glfwApp
 
-
-config = {
-    "global": {
-        "font_path": "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-        "era5_dir": "/data/jseddon/era5",
-        "hourly_file": "/home/jseddon/python/elinca/hourly_positions.json",
-    },
-    "videos": {
-        "pre_delivery": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_pre_delivery.png",
-            "opening_image": "credits/start_leg_pre_delivery.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (49.7, 58.7),
-            "lon_range": (-11, -2),
-            "start_date": "20130917",
-            "end_date": "20130923",
-            "filename": "elinca_pre_delivery.avi",
-        },
-        "leg_1": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_01.png",
-            "opening_image": "credits/start_leg_01.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (37, 51),
-            "lon_range": (-15, -1),
-            "start_date": "20130924",
-            "end_date": "20131001",
-            "filename": "elinca_leg_01.avi",
-        },
-        "legs_2_3": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_02_03.png",
-            "opening_image": "credits/start_leg_02_03.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-33, 47),
-            "lon_range": (-70, 10),
-            "start_date": "20131001",
-            "end_date": "20131106",
-            "filename": "elinca_leg_02_03.avi",
-        },
-        "leg_4": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_04.png",
-            "opening_image": "credits/start_leg_04.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-57, -22),
-            "lon_range": (-75, -40),
-            "start_date": "20131110",
-            "end_date": "20131203",
-            "filename": "elinca_leg_04.avi",
-        },
-        "leg_5": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_05.png",
-            "opening_image": "credits/start_leg_05.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-68, -54),
-            "lon_range": (-70, -56),
-            "start_date": "20131209",
-            "end_date": "20140104",
-            "filename": "elinca_leg_05.avi",
-        },
-        "leg_6": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_05.png",
-            "opening_image": "credits/start_leg_06.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-68, -54),
-            "lon_range": (-70, -56),
-            "start_date": "20140105",
-            "end_date": "20140129",
-            "filename": "elinca_leg_06.avi",
-        },
-        "legs_7_8": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_07.png",
-            "opening_image": "credits/start_leg_07.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-67, -33),
-            "lon_range": (-69, -35),
-            "start_date": "20140201",
-            "end_date": "20140308",
-            "filename": "elinca_leg_07_08.avi",
-        },
-        "leg_9": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_09.png",
-            "opening_image": "credits/start_leg_09.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-37.5, -22),
-            "lon_range": (-57.5, -42),
-            "start_date": "20140312",
-            "end_date": "20140329",
-            "filename": "elinca_leg_09.avi",
-        },
-        "leg_10": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_10.png",
-            "opening_image": "credits/start_leg_10.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (-24, 39),
-            "lon_range": (-70, -7),
-            "start_date": "20140331",
-            "end_date": "20140428",
-            "filename": "elinca_leg_10.avi",
-        },
-        "leg_11": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_11.png",
-            "opening_image": "credits/start_leg_11.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (31.6, 49.6),
-            "lon_range": (-26, -8),
-            "start_date": "20140429",
-            "end_date": "20140509",
-            "filename": "elinca_leg_11.avi",
-        },
-        "leg_12": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_12.png",
-            "opening_image": "credits/start_leg_12.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (43, 51),
-            "lon_range": (-10.7, -2.7),
-            "start_date": "20140510",
-            "end_date": "20140517",
-            "filename": "elinca_leg_12.avi",
-        },
-        "post_delivery": {
-            "background_file": "/home/jseddon/python/elinca/backgrounds/"
-                               "leg_pre_delivery.png",
-            "opening_image": "credits/start_leg_post_delivery.png",
-            "opening_seconds": 5,
-            "end_image": "credits/end.png",
-            "end_seconds": 10,
-            "width": 800,
-            "height": 800,
-            "lat_range": (49.7, 58.7),
-            "lon_range": (-11, -2),
-            "start_date": "20140518",
-            "end_date": "20140524",
-            "filename": "elinca_post_delivery.avi",
-        },
-
-    },
-}
 
 # Various predefined PIL colours with full opacity
 PIL_BLACK = (0, 0, 0, 255)
@@ -370,7 +180,7 @@ class BackgroundImage:
         """
         Get a background image with the vessel and date overlaid
 
-        :returns: The backgrund image as a Numpy array orientated for the
+        :returns: The background image as a Numpy array orientated for the
             FieldAnimation package.
         """
         return np.flipud(np.asarray(self.orig_image, np.uint8))
@@ -567,8 +377,9 @@ def parse_args():
     Parse command-line arguments
     """
     parser = argparse.ArgumentParser(
-        description="Produce Elinca wind particle " "animation videos"
+        description="Produce Elinca wind particle animation videos"
     )
+    parser.add_argument("legs_json", help="The JSON description of the legs")
     all_or_leg = parser.add_mutually_exclusive_group(required=True)
     all_or_leg.add_argument("-a", "--all", help="Produce all legs", action="store_true")
     all_or_leg.add_argument(
@@ -577,13 +388,15 @@ def parse_args():
         help="The name of the leg from " "the config file to " "produce",
     )
     parser.add_argument(
-        "-d", "--debug", help="dsiplay debug information", action="store_true"
+        "-d", "--debug", help="display debug information", action="store_true"
     )
     return parser.parse_args()
 
 
 def main(args):
     """Main entry"""
+    with open(args.legs_json) as fh:
+        config = json.load(fh)
     if not args.all:
         if not args.leg_name in config["videos"]:
             logging.error(f"Leg name {args.leg_name} not found in the configuration.")
