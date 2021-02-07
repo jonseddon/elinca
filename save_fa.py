@@ -327,8 +327,11 @@ def produce_leg(global_config, leg_config):
         )
 
         date_str = de.time.strftime("%d/%m/%Y %H:%M")
-        boat_colour = (tuple(global_config["fix_colour"]) if de.src == "f" else
-                       tuple(global_config["interpolated_colour"]))
+        boat_colour = (
+            tuple(global_config["fix_colour"])
+            if de.src == "f"
+            else tuple(global_config["interpolated_colour"])
+        )
 
         if i == 0:
             # If first field then create the animation
@@ -344,10 +347,12 @@ def produce_leg(global_config, leg_config):
         # Allow animation to update num_frames_per_time for each frame
         # Advance the animation num_frames_per_time for each time period but
         # only write out to the video every output_frame_every_n_frames frames.
-        num_frames_per_time = leg_config.get("num_frames_per_time",
-                                             global_config["num_frames_per_time"])
-        output_frame_every_n_frames = leg_config.get("output_frame_every_n_frames",
-                                                     global_config["output_frame_every_n_frames"])
+        num_frames_per_time = leg_config.get(
+            "num_frames_per_time", global_config["num_frames_per_time"]
+        )
+        output_frame_every_n_frames = leg_config.get(
+            "output_frame_every_n_frames", global_config["output_frame_every_n_frames"]
+        )
         for n in range(num_frames_per_time):
             skip_write = True if (n + 1) % output_frame_every_n_frames else False
             app.run_frame(
