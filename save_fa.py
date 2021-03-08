@@ -8,6 +8,7 @@ https://medium.com/@shintaroshiba/saving-3d-rendering-images-without-displays-on
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 
@@ -182,6 +183,51 @@ class BackgroundImage:
         """
         return np.flipud(np.asarray(self.orig_image, np.uint8))
 
+class Era5Field:
+    """
+    Load an ERA5 wind field.
+    """
+    def __init__(self, u_file, v_file, lats, longs):
+        """
+        Load ERA5 u and v wind files, trim to the specified latitude and longitude
+        range.
+
+        :param str u_file: path to u wind component file
+        :param str v_file: path to v wind component file
+        :param tuple lats: tuple of minimum and maximum latitudes
+        :param tuple longs: tuple of minimum and maximum longitudes
+        """
+        u_cube = iris.load_cube(u_file)
+        self._u_region = u_cube[0].intersection(latitude=lats, longitude=longs)
+        v_cube = iris.load_cube(v_file)
+        self._v_region = v_cube[0].intersection(latitude=lats, longitude=longs)
+
+    def get_field_uv(self):
+        """
+        Convert to a FieldAnimation uv field.
+
+        :returns: the uv field
+        :rtype: numpy.array
+        """
+        _u = self._u_region.data[::-1]
+        _v = self._v_region.data[::-1]
+        field_uv = np.flipud(np.dstack((_u, _v)))
+        return field_uv
+
+    def get_beaufort(self, lat, long):
+        """
+        Calculate the wind strength at the specified point.
+
+        :returns: the Beaufort wind force
+        :rtype: int
+        """
+        ms_to_knot = 1.944
+        lat_index = self._u_region.coord('latitude').nearest_neighbour_index(lat)
+        long_index = self._u_region.coord('longitude').nearest_neighbour_index(long)
+        u_vel = float(self._u_region[lat_index, long_index].data)
+        v_vel = float(self._v_region[lat_index, long_index].data)
+        return knots_to_beaufort(math.sqrt(u_vel**2 + v_vel**2) * ms_to_knot)
+
 
 def overlay_video_frame(
     frame_image,
@@ -197,7 +243,7 @@ def overlay_video_frame(
     font_path,
     font_size=30,
     vessel_radius=3,
-    text_width_proportion=0.6,
+    text_width_proportion=0.05,
     text_height_proportion=0.9375,
 ):
     """"
@@ -246,26 +292,33 @@ def overlay_video_frame(
     return np.asarray(im_pil)
 
 
-def load_era5_field(u_file, v_file, lats, longs):
+def knots_to_beaufort(knots):
     """
-    Load ERA5 u and v wind files, trim to the specified latitude and longitude
-    range and convert to a FieldAnimation uv field.
+    Convert the specified wind speed in knots into a Beaufort Force.
 
-    :param str u_file: path to u wind component file
-    :param str v_file: path to v wind component file
-    :param tuple lats: tuple of minimum and maximum latitudes
-    :param tuple longs: tuple of minimum and maximum longitudes
-    :returns: the uv field
-    :rtype: numpy.array
+    :param float knots: the wind speed to convert
+    :returns: the Beaufort Force number of the wind speed
+    :rtype: int
     """
-    u_cube = iris.load_cube(u_file)
-    u_atl = u_cube[0].intersection(latitude=lats, longitude=longs)
-    u = u_atl.data[::-1]
-    v_cube = iris.load_cube(v_file)
-    v_atl = v_cube[0].intersection(latitude=lats, longitude=longs)
-    v = v_atl.data[::-1]
-    field_uv = np.flipud(np.dstack((u, -v)))
-    return field_uv
+    force_max = [
+        1.,  # F0
+        4.,  # F1
+        7.,  # F2
+        11.,  # F3
+        17.,  # F4
+        22.,  # F5
+        28.,  # F6
+        34.,  # F7
+        41.,  # F8
+        48.,  # F9
+        56.,  # F10
+        64.,  # F11
+        sys.maxsize  # F12
+    ]
+
+    for force, maximum in enumerate(force_max):
+        if knots < maximum:
+            return force
 
 
 def produce_leg(global_config, leg_config):
@@ -319,12 +372,13 @@ def produce_leg(global_config, leg_config):
             f"{de.time.month:02}{de.time.day:02}"
             f"{de.time.hour:02}00"
         )
-        field_uv = load_era5_field(
+        wind_data = Era5Field(
             os.path.join(day_dir, file_prefix + ".10u.nc"),
             os.path.join(day_dir, file_prefix + ".10v.nc"),
             leg_config["lat_range"],
             leg_config["lon_range"],
         )
+        field_uv = wind_data.get_field_uv()
 
         date_str = de.time.strftime("%d/%m/%Y %H:%M")
         boat_colour = (
@@ -332,6 +386,8 @@ def produce_leg(global_config, leg_config):
             if de.src == "f"
             else tuple(global_config["interpolated_colour"])
         )
+        bottom_string = (f'Wind F{wind_data.get_beaufort(de.lat, de.lon):2} '
+                         f'Elinca {de.speed:1.0f} kts  {date_str}')
 
         if i == 0:
             # If first field then create the animation
@@ -356,7 +412,7 @@ def produce_leg(global_config, leg_config):
         for n in range(num_frames_per_time):
             skip_write = True if (n + 1) % output_frame_every_n_frames else False
             app.run_frame(
-                date_str,
+                bottom_string,
                 de.lat,
                 de.lon,
                 boat_colour,
