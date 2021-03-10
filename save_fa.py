@@ -243,8 +243,8 @@ def overlay_video_frame(
     font_path,
     font_size=30,
     vessel_radius=3,
-    text_width_proportion=0.05,
-    text_height_proportion=0.9375,
+    text_width_proportion=0.575,
+    text_height_proportion=0.915,
 ):
     """"
     Overlay the vessel position and the specified date and time string on
@@ -386,8 +386,8 @@ def produce_leg(global_config, leg_config):
             if de.src == "f"
             else tuple(global_config["interpolated_colour"])
         )
-        bottom_string = (f'Wind F{wind_data.get_beaufort(de.lat, de.lon):2} '
-                         f'Elinca {de.speed:1.0f} kts  {date_str}')
+        bottom_string = (f'Wind F{wind_data.get_beaufort(de.lat, de.lon):1} '
+                         f'Elinca {de.speed:1.0f}kt\n{date_str}')
 
         if i == 0:
             # If first field then create the animation
